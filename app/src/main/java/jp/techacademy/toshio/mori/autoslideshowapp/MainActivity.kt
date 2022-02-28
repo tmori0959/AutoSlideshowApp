@@ -35,6 +35,10 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        onoff_button.setOnClickListener(this)
+        next_button.setOnClickListener(this)
+        back_button.setOnClickListener(this)
+
         // Android 6.0以降の場合:パーミッションの許可状態を確認する
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
@@ -46,10 +50,13 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
                 // 許可されていないので許可ダイアログを表示する
                 requestPermissions(
                     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                    PERMISSIONS_REQUEST_CODE
-                )
+                    PERMISSIONS_REQUEST_CODE )
             }
+            // Android 5系以下の場合
+        } else {
+            getContentsInfo()
         }
+
     }
 
     override fun onRequestPermissionsResult(
@@ -61,15 +68,12 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
             PERMISSIONS_REQUEST_CODE ->
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Log.d("ANDROID", "許可された")
+                    getContentsInfo()
                 } else {
                     Log.d("ANDROID", "許可されなかった")
+                    requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), PERMISSIONS_REQUEST_CODE)
                 }
         }
-
-        // ボタンクリック待ち
-        onoff_button.setOnClickListener(this)
-        next_button.setOnClickListener(this)
-        back_button.setOnClickListener(this)
     }
 
     private fun getContentsInfo() {
@@ -90,7 +94,6 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
 
             imageView.setImageURI(imageUri)
         }
-//        cursor!!.close()
     }
 
     private var cursor: Cursor? = null
@@ -98,6 +101,8 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
     private var mTimer: Timer? = null
 
     override fun onClick(v: View?) {
+        // ボタンクリック待ち
+
         // 進むボタン
         if (v?.id == R.id.next_button) {
             if (cursor!!.moveToNext()) {
@@ -130,21 +135,37 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {     // View.OnCl
             }
             // 再生停止ボタン
         } else if (v?.id == R.id.onoff_button) {
+             var imageUri: Uri? = null      // メンバ関数
             if (mTimer == null) {
                 mTimer = Timer()        // タイマー作成
                 // タイマー始動
                 mTimer!!.schedule(object : TimerTask() {
                     override fun run() {
-                        cursor!!.moveToFirst()
-                        val fieldIndex = cursor!!.getColumnIndex(MediaStore.Images.Media._ID)
-                        val id = cursor!!.getLong(fieldIndex)
-                        val imageUri =
-                            ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                        imageView.setImageURI(imageUri)
-/*                        mHandler.post {
 
+
+                    mHandler.post {
+
+                        if (cursor!!.moveToNext()) {
+                            val fieldIndex = cursor!!.getColumnIndex(MediaStore.Images.Media._ID)
+                            val id = cursor!!.getLong(fieldIndex)
+                            val imageUri =
+                                ContentUris.withAppendedId(
+                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                                )
+                            imageView.setImageURI(imageUri)
+                        } else if (cursor!!.moveToFirst()) {
+                            val fieldIndex = cursor!!.getColumnIndex(MediaStore.Images.Media._ID)
+                            val id = cursor!!.getLong(fieldIndex)
+                            val imageUri =
+                                ContentUris.withAppendedId(
+                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                    id
+                                )
+                            imageView.setImageURI(imageUri)
                         }
-*/                    }
+
+                    }
+                }
                 }, 2000, 2000) // 最初に始動させるまで2秒、ループの間隔を2秒 に設定
                     onoff_button.text = "停止"
                     next_button.isEnabled = false
